@@ -7,26 +7,29 @@ module.exports = {
         .setDescription('Setup the ticket channel'),
     async execute(interaction) {
         // 1. Definiamo il pulsante
-        const button = new ButtonBuilder()
+        const privateButton = new ButtonBuilder()
             .setCustomId('ticket_open')
-            .setLabel('Clicca se sei baka')
+            .setLabel('Clicca se sei baka ma sei privato')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('📩');
+
+        const publicButton = new ButtonBuilder()
+            .setCustomId('ticket_open')
+            .setLabel('Clicca se sei baka ma sei pubblico')
             .setStyle(ButtonStyle.Success)
             .setEmoji('📩');
 
-        const row = new ActionRowBuilder().addComponents(button);
-
-        // 2. Prendiamo il canale dal server usando l'ID del JSON
-        const targetChannel = await interaction.guild.channels.fetch(ticketChannelId);
+        const row = new ActionRowBuilder().addComponents(privateButton,publicButton);
 
         // 3. Inviamo il messaggio nel canale dei ticket
-        await targetChannel.send({
+        await interaction.channel.send({
             content: 'Clicca il pulsante qui sotto per aprire un ticket!',
             components: [row]
         });
 
         // 4. Risposta di conferma (obbligatoria per Discord)
         await interaction.reply({
-            content: `Pulsante inviato correttamente in <#${ticketChannelId}>`,
+            content: `Pulsante creato correttamente!`,
             flags: [MessageFlags.Ephemeral]
         });
     },
