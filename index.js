@@ -12,7 +12,8 @@ const {
     TextInputStyle,
     PermissionFlagsBits,
     StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder
+    StringSelectMenuOptionBuilder,
+    EmbedBuilder
 } = require('discord.js');
 
 const { token, ticketCategoryId, TOSChannelId } = require('./config.json');
@@ -195,8 +196,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // ==========================================
     // 3. INVIO MODAL (Lettura dati Form)
     // ==========================================
+    // ==========================================
+    // 3. INVIO MODAL (Lettura dati Form)
+    // ==========================================
     if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_form_')) {
-        // Estraiamo il tipo di servizio dall'ID del modal che avevamo salvato prima
+        // Estraiamo il tipo di servizio
         const selectedService = interaction.customId.replace('ticket_form_', '');
 
         // Otteniamo i testi inseriti
@@ -206,20 +210,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const references = interaction.fields.getTextInputValue('references') || "Nessun link fornito.";
         const additionalInfo = interaction.fields.getTextInputValue('additional_info') || "Nessuna informazione aggiuntiva.";
 
-        // Stampiamo tutto bello formattato nel canale
+        // Creiamo l'Embed
+        const ticketEmbed = new EmbedBuilder()
+            .setColor('#0099ff') // Puoi cambiare il colore esadecimale (es: un bel verde #2ecc71)
+            .setTitle('📋 Nuova Richiesta Compilata')
+            .setAuthor({
+                name: interaction.user.tag,
+                iconURL: interaction.user.displayAvatarURL()
+            })
+            .setDescription(`Dettagli del ticket aperto da <@${interaction.user.id}>.`)
+            .addFields(
+                { name: '🔹 Service Type', value: selectedService, inline: true },
+                { name: '⏳ Deadline', value: deadline, inline: true },
+                { name: '💰 Budget', value: budget, inline: true },
+                { name: '📝 Description', value: description, inline: false },
+                { name: '🔗 References', value: references, inline: false },
+                { name: '➕ Additional Info', value: additionalInfo, inline: false }
+            )
+            .setFooter({ text: '✅ TOS Accettati • Attendi uno staffer' })
+            .setTimestamp();
+
+        // Invia l'embed E il messaggio extra per pingare l'utente (l'embed da solo non pinga)
         await interaction.reply({
-            content: `**📋 NUOVA RICHIESTA COMPILATA**\n\n` +
-                `**🔹 Service Type:** ${selectedService}\n` +
-                `**⏳ Deadline:** ${deadline}\n` +
-                `**💰 Budget:** ${budget}\n\n` +
-                `**📝 Description:**\n${description}\n\n` +
-                `**🔗 References:**\n${references}\n\n` +
-                `**➕ Additional Info:**\n${additionalInfo}\n\n` +
-                `*✅ TOS Accettati*\n\n` +
-                `<@${interaction.user.id}>, se hai **file o immagini** da allegare (Attachments), puoi inviarli direttamente qui in chat ora! Uno staffer ti risponderà a breve.`
+            content: `<@${interaction.user.id}>, il baka ha risposto! Se hai **file o immagini** (Attachments) da allegare, puoi inviarli direttamente qui in chat ora!`,
+            embeds: [ticketEmbed]
         });
 
-        // Rimuoviamo il menu a tendina dal messaggio precedente così non può essere ricliccato
+        // Rimuoviamo il menu a tendina dal messaggio precedente
         try {
             await interaction.message.edit({components: []});
         } catch (e) {
