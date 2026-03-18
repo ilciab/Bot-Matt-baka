@@ -109,7 +109,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                     new StringSelectMenuOptionBuilder().setLabel('Plugin').setValue('Plugin').setEmoji('🔌'),
                     new StringSelectMenuOptionBuilder().setLabel('Skin').setValue('Skin').setEmoji('👕'),
                     new StringSelectMenuOptionBuilder().setLabel('Model').setValue('Model').setEmoji('🗿'),
-                    new StringSelectMenuOptionBuilder().setLabel('Multi').setValue('Multi').setEmoji('📦'),
+                    new StringSelectMenuOptionBuilder().setLabel('Other').setValue('Other').setEmoji('📦'),
                 );
 
             const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -209,15 +209,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setStyle(ButtonStyle.Success)
         );
 
+        // Rispondiamo all'interazione del modal
         await interaction.reply({
             content: `Great job <@${interaction.user.id}>! First part completed. Click below for the final details specific to **${selectedService}**.`,
             components: [nextStepButton],
         });
 
+        // Eliminiamo il messaggio originale (quello con il menu a tendina)
         try {
-            await interaction.message.edit({components: []});
+            if (interaction.message) {
+                await interaction.message.delete();
+            }
         } catch (e) {
-            console.log("Failed to remove the menu after modal submit");
+            console.log("Failed to delete the menu message after modal submit");
         }
     }
 
@@ -282,7 +286,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
             const sizeInput = new TextInputBuilder()
                 .setCustomId('skin_size')
-                .setLabel("Skin Size (Steve or Alex?)")
+                .setLabel("Skin Size (Steve or Alex)")
                 .setPlaceholder("Steve (Classic 4px arms) or Alex (Slim 3px arms)")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
@@ -313,21 +317,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
             const animationInput = new TextInputBuilder()
                 .setCustomId('model_animations')
                 .setLabel("Do you need any animations?")
-                .setPlaceholder("E.g., Idle, walking, attack, or None")
+                .setPlaceholder("E.g. Idle, walking, attack, or None")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
 
             const versionInput = new TextInputBuilder()
                 .setCustomId('model_version')
                 .setLabel("Minecraft Version")
-                .setPlaceholder("E.g., 1.20.4, 1.19.2, Bedrock...")
+                .setPlaceholder("E.g. 1.20.4, 1.19.2, Bedrock...")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
 
             const implementationInput = new TextInputBuilder()
                 .setCustomId('model_implementation')
                 .setLabel("How should we implement the model?")
-                .setPlaceholder("E.g., ItemsAdder, Oraxen, Vanilla Resource Pack...")
+                .setPlaceholder("E.g. ItemsAdder, Oraxen, Vanilla Resource Pack...")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
 
@@ -350,7 +354,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setCustomId('specific_modal_Plugin')
                 .setTitle('Plugin Specific Details');
 
-            // 1. Server Software
             const softwareInput = new TextInputBuilder()
                 .setCustomId('plugin_software')
                 .setLabel("Server Software")
@@ -358,15 +361,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
 
-            // 2. Main Functionalities
             const functionsInput = new TextInputBuilder()
                 .setCustomId('plugin_functions')
                 .setLabel("Main Functionalities")
-                .setPlaceholder("E,g, GUI menus, scoreboard, custom items, etc.")
+                .setPlaceholder("E.g. GUI menus, scoreboard, custom items, etc.")
                 .setStyle(TextInputStyle.Paragraph)
                 .setRequired(true);
 
-            // 3. Integrations
             const integrationsInput = new TextInputBuilder()
                 .setCustomId('plugin_integrations')
                 .setLabel("Integrations (Optional)")
@@ -374,7 +375,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false);
 
-            // 4. Additions
             const additionsInput = new TextInputBuilder()
                 .setCustomId('plugin_additions')
                 .setLabel("Additions needed?")
@@ -382,11 +382,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false);
 
-            // 5. Database
             const databaseInput = new TextInputBuilder()
                 .setCustomId('plugin_database')
                 .setLabel("Database Requirements")
-                .setPlaceholder("E,g, No, YAML, SQLite, MySQL...")
+                .setPlaceholder("E.g. No, YAML, SQLite, MySQL...")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false);
 
@@ -398,11 +397,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 new ActionRowBuilder().addComponents(databaseInput)
             );
         } else {
-            // "Multi" rimane invariato o gestito diversamente
-            return interaction.reply({
+            // Eliminiamo il messaggio con il bottone per il servizio "Other"
+            try {
+                if (interaction.message) {
+                    await interaction.message.delete();
+                }
+            } catch (e) {
+                console.log("Failed to remove the button for the 'Other' service");
+            }
+
+            // Inviamo il messaggio di conferma finale pubblico nel canale
+            await interaction.channel.send({
                 content: "✅ No additional details are required for this service. A staff member will get back to you shortly.",
-                flags: MessageFlags.Ephemeral
             });
+
+            // Dato che per Discord dobbiamo sempre rispondere all'interazione se non apriamo un modal:
+            return interaction.reply({ content: "Operation completed.", flags: MessageFlags.Ephemeral });
         }
 
         await interaction.showModal(specificModal);
@@ -450,16 +460,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
             );
         }
 
+        // Inviamo l'embed aggiuntivo
         await interaction.channel.send({ embeds: [extraEmbed] });
 
-        await interaction.reply({
-            content: `Perfect! We’ve collected all the details for your **${selectedService}**. A staff member will take over your ticket shortly.`,
+        // Inviamo il messaggio di conferma finale pubblico nel canale
+        await interaction.channel.send({
+            content: `Perfect! We’ve collected all the details for your **${selectedService}**. A staff member will take over your ticket shortly.`
         });
 
+        // Rispondiamo all'interazione del modal per non far crashare Discord, ma usiamo un messaggio effimero di servizio
+        await interaction.reply({ content: "Details submitted successfully.", flags: MessageFlags.Ephemeral });
+
+        // Eliminiamo il messaggio con il bottone "Continue"
         try {
-            await interaction.message.edit({ components: [] });
+            if (interaction.message) {
+                await interaction.message.delete();
+            }
         } catch (e) {
-            console.log("Impossibile rimuovere il bottone, probabile messaggio epimero.");
+            console.log("Failed to delete the button message after final modal submit");
         }
     }
 });
